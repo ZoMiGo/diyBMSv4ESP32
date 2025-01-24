@@ -307,6 +307,13 @@ void InitializeNVS()
     }
     ESP_ERROR_CHECK(err);
 }
+void HAL::initCAN() {
+    if (!CAN.begin(CAN_SPEED)) {
+        Serial.println("Fehler beim Initialisieren des CAN-Busses!");
+        while (1);
+    }
+    Serial.println("CAN-Bus erfolgreich initialisiert!");
+}
 void writeSetting(nvs_handle_t handle, const char *key, bool value)
 {
     writeSetting(handle, key, (uint8_t)value);
