@@ -2,7 +2,7 @@
 static constexpr const char *const TAG = "diybms-set";
 
 #include "settings.h"
-
+#include "EEPROM.h"
 /*
 THESE STRINGS ARE USED AS KEYS IN THE JSON SETTINGS BACKUP FILES
 DEFINED HERE (ONCE) TO ENSURE TYPOS ARE NOT MADE
@@ -332,6 +332,10 @@ void writeSetting(nvs_handle_t handle, const char *key, int16_t value)
 {
     ESP_LOGD(TAG, "Writing (%s)=%i", key, value);
     ESP_ERROR_CHECK(nvs_set_i16(handle, key, value));
+}
+void initSettings() {
+    EEPROM.begin(512);
+    // Weitere Initialisierungen
 }
 void writeSetting(nvs_handle_t handle, const char *key, uint32_t value)
 {
