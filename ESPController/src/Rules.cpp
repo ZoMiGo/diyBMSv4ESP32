@@ -2,6 +2,7 @@
 static constexpr const char *const TAG = "diybms-rules";
 
 #include "Rules.h"
+#include "CAN.h"
 
 // Its critical these are in the same order as "enum Rule", and occupy the same index position
 const std::array<std::string, 1 + MAXIMUM_RuleNumber> Rules::RuleTextDescription = {
@@ -46,7 +47,7 @@ const std::array<std::string, 1 + MAXIMUM_InternalErrorCode> Rules::InternalErro
         "ControllerMemoryError",
         "ErrorEmergencyStop"};
 
-void Rules::processCANMessages() {
+void processCANMessages() {
     if (CAN.parsePacket()) {
         uint8_t senderID = CAN.packetId();
         uint8_t command = CAN.read();
@@ -62,6 +63,12 @@ void Rules::processCANMessages() {
                 Serial.println("Unbekannter Befehl!");
         }
     }
+}
+
+void sendCANMessage(uint8_t receiverID, uint8_t command) {
+    CAN.beginPacket(receiverID);
+    CAN.write(command);
+    CAN.endPacket();
 }
 void Rules::ClearValues()
 {
