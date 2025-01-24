@@ -46,6 +46,23 @@ const std::array<std::string, 1 + MAXIMUM_InternalErrorCode> Rules::InternalErro
         "ControllerMemoryError",
         "ErrorEmergencyStop"};
 
+void Rules::processCANMessages() {
+    if (CAN.parsePacket()) {
+        uint8_t senderID = CAN.packetId();
+        uint8_t command = CAN.read();
+        Serial.printf("Empfangene Nachricht von Modul %d: %d\n", senderID, command);
+
+        // Verarbeite den empfangenen Befehl
+        switch (command) {
+            case 0x01:
+                // Beispiel: Status senden
+                sendCANMessage(senderID, 0x10);  // Status-Antwort
+                break;
+            default:
+                Serial.println("Unbekannter Befehl!");
+        }
+    }
+}
 void Rules::ClearValues()
 {
     // Clear arrays
