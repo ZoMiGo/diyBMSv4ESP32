@@ -2,7 +2,7 @@
 static constexpr const char *const TAG = "diybms-set";
 
 #include "settings.h"
-#include "EEPROM.h"
+
 /*
 THESE STRINGS ARE USED AS KEYS IN THE JSON SETTINGS BACKUP FILES
 DEFINED HERE (ONCE) TO ENSURE TYPOS ARE NOT MADE
@@ -307,13 +307,6 @@ void InitializeNVS()
     }
     ESP_ERROR_CHECK(err);
 }
-void HAL::initCAN() {
-    if (!CAN.begin(CAN_SPEED)) {
-        Serial.println("Fehler beim Initialisieren des CAN-Busses!");
-        while (1);
-    }
-    Serial.println("CAN-Bus erfolgreich initialisiert!");
-}
 void writeSetting(nvs_handle_t handle, const char *key, bool value)
 {
     writeSetting(handle, key, (uint8_t)value);
@@ -332,10 +325,6 @@ void writeSetting(nvs_handle_t handle, const char *key, int16_t value)
 {
     ESP_LOGD(TAG, "Writing (%s)=%i", key, value);
     ESP_ERROR_CHECK(nvs_set_i16(handle, key, value));
-}
-void initSettings() {
-    EEPROM.begin(512);
-    // Weitere Initialisierungen
 }
 void writeSetting(nvs_handle_t handle, const char *key, uint32_t value)
 {
@@ -1428,3 +1417,4 @@ void JSONToSettings(JsonDocument &doc, diybms_eeprom_settings *settings)
         settings->tileconfig[i] = v.as<uint16_t>();
     }
 }
+
