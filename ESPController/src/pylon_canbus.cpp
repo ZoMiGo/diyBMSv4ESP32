@@ -10,83 +10,6 @@ This code communicates emulates a PYLON TECH BATTERY using CANBUS @ 500kbps and 
 
 */
 
-/*
-#include "CAN.h"
-#include "EEPROM.h"
-#include "settings.h"
-
-void setup() {
-    // CAN-Bus initialisieren
-    if (!CAN.begin(CAN_SPEED)) {
-        Serial.println("Fehler beim Initialisieren des CAN-Busses!");
-        while (1);
-    }
-    Serial.println("CAN-Bus erfolgreich initialisiert!");
-
-    // Modul-ID laden oder generieren
-    uint8_t moduleID = EEPROM.read(0);
-    if (moduleID == 0xFF) {
-        moduleID = generateUniqueID();
-        EEPROM.write(0, moduleID);
-        EEPROM.commit();
-    }
-    Serial.printf("Modul-ID: %d\n", moduleID);
-
-    // Master-Slave-Erkennung
-    if (moduleID == 1) {
-        Serial.println("Dieses Modul ist der Master.");
-        // Master-spezifische Initialisierung
-    } else {
-        Serial.println("Dieses Modul ist ein Slave.");
-        // Slave-spezifische Initialisierung
-    }
-
-    // Doppelte IDs prüfen und beheben
-    checkDuplicateIDs();
-}
-
-void loop() {
-    // CAN-Nachrichten verarbeiten
-    processCANMessages();
-}
-
-// Funktion zur Generierung einer eindeutigen Modul-ID
-uint8_t generateUniqueID() {
-    static uint8_t idCounter = 1;
-    return idCounter++;
-}
-
-// Funktion zur Prüfung und Behebung doppelter IDs
-void checkDuplicateIDs() {
-    // Logik zur Prüfung und Behebung doppelter IDs
-}
-
-// Funktion zur Verarbeitung von CAN-Nachrichten
-void processCANMessages() {
-    if (CAN.parsePacket()) {
-        uint8_t senderID = CAN.packetId();
-        uint8_t command = CAN.read();
-        Serial.printf("Empfangene Nachricht von Modul %d: %d\n", senderID, command);
-
-        // Verarbeite den empfangenen Befehl
-        switch (command) {
-            case 0x01:
-                // Beispiel: Status senden
-                sendCANMessage(senderID, 0x10);  // Status-Antwort
-                break;
-            default:
-                Serial.println("Unbekannter Befehl!");
-        }
-    }
-}
-
-// Funktion zum Senden von CAN-Nachrichten
-void sendCANMessage(uint8_t receiverID, uint8_t command) {
-    CAN.beginPacket(receiverID);
-    CAN.write(command);
-    CAN.endPacket();
-}
-*/
 #define USE_ESP_IDF_LOG 1
 static constexpr const char *const TAG = "diybms-pylon";
 
@@ -354,3 +277,4 @@ void pylon_message_356()
 
   send_canbus_message(0x356, (uint8_t *)&data, sizeof(data356));
 }
+
