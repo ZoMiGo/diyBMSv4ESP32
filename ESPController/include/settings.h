@@ -1,7 +1,5 @@
 #ifndef DIYBMS_SETTINGS_H_
 #define DIYBMS_SETTINGS_H_
-#define CAN_SPEED 500000  // Baudrate des CAN-Busses
-#define MAX_MODULES 10   // Maximale Anzahl der BMS-Module
 
 #include "defines.h"
 #include "nvs_flash.h"
