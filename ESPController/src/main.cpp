@@ -12,8 +12,9 @@
   This code runs on ESP32 DEVKIT-C and compiles with VS CODE and PLATFORM IO environment.
 
   Unless you are making code changes, please use the pre-compiled version from GITHUB instead.
+  Modification by Trajilovic Goran
 */
-// Modification Trajilovic Goran 2025 gorance@live.de
+
 #if defined(ESP8266)
 #error ESP8266 is not supported by this code
 #endif
@@ -83,7 +84,8 @@ extern "C"
 
 #include "history.h"
 #include "bms_id_manager.h" // New functions for ID management by Trajilovic Goran
-#include "bms_can_communication.h" // CAN communication by Trajilovic Goran
+//#include "bms_can_communication.h" // CAN communication by Trajilovic Goran
+#include <EEPROM.h>
 
 
 CurrentMonitorINA229 currentmon_internal = CurrentMonitorINA229();
@@ -1774,9 +1776,9 @@ void wifi_init_sta(void)
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
   ESP_ERROR_CHECK(esp_netif_init());
-  // Modification Trajilovic Goran START
+  // Modification Trajilovic Goran START OLD
   ESP_ERROR_CHECK(nvs_flash_init());
-  // Modification Trajilovic Goran ENDE
+  // Modification Trajilovic Goran ENDE OLD
 
 
   esp_netif_t *netif = esp_netif_create_default_wifi_sta();
@@ -3860,10 +3862,11 @@ ESP32 Chip model = %u, Rev %u, Cores=%u, Features=%u)",
   LoadConfiguration(&mysettings);
   ValidateConfiguration(&mysettings);
 //Modification Trajilovic Goran START
- initializeBMSIDs();
-    assignMaster();
-    setupCANCommunication();
+    EEPROM.begin(512);
+    initializeBMSIDs();
     checkDuplicateIDs();
+    assignMaster();
+    setupPylonCanBus();
 //Modification Trajilovic Goran ENDE
   if (strlen(mysettings.homeassist_apikey) == 0)
   {
@@ -4156,7 +4159,16 @@ void loop()
 {
   //vTaskDelete(NULL);  
   delay(250);
+    static uint32_t lastSlaveRequest = 0;
+    static uint32_t lastVictronTransmit = 0;
 
+    uint32_t now = millis();
+
+    if (now - lastSlaveRequest > 5000) {
+        requestDataFromSlaves();
+        lastSlaveRequest = now;
+    }
+    delay(100);
   auto currentMillis = millis();
 
   if (card_action == CardAction::Mount)
@@ -4196,9 +4208,9 @@ void loop()
     // Wait another 30 seconds
     wifitimer = currentMillis + 30000;
   }
-  // Trajilovic Goran Modification START
-   processIncomingCANMessages();
-    delay(100);
+  // Trajilovic Goran Modification START wurde deaktiviert um zu testen
+   //processIncomingCANMessages();
+    //delay(100);
   // Trajilovic Goran Modification ENDE
 
   // Call update to receive, decode and process incoming packets
@@ -4244,4 +4256,5 @@ void loop()
     }
   }
 }
+
 
