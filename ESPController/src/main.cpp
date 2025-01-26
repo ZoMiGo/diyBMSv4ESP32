@@ -13,7 +13,7 @@
 
   Unless you are making code changes, please use the pre-compiled version from GITHUB instead.
 */
-
+// Modification Trajilovic Goran 2025 gorance@live.de
 #if defined(ESP8266)
 #error ESP8266 is not supported by this code
 #endif
@@ -82,6 +82,9 @@ extern "C"
 #include "CurrentMonitorINA229.h"
 
 #include "history.h"
+#include "bms_id_manager.h" // New functions for ID management by Trajilovic Goran
+#include "bms_can_communication.h" // CAN communication by Trajilovic Goran
+
 
 CurrentMonitorINA229 currentmon_internal = CurrentMonitorINA229();
 extern void randomCharacters(char *value, int length);
@@ -1771,6 +1774,10 @@ void wifi_init_sta(void)
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
   ESP_ERROR_CHECK(esp_netif_init());
+  // Modification Trajilovic Goran START
+  ESP_ERROR_CHECK(nvs_flash_init());
+  // Modification Trajilovic Goran ENDE
+
 
   esp_netif_t *netif = esp_netif_create_default_wifi_sta();
   assert(netif);
@@ -3776,6 +3783,7 @@ void setup()
   for (auto log : log_levels)
   {
     esp_log_level_set(log.tag, log.level);
+    
   }
 
   esp_chip_info(&chip_info);
@@ -3851,7 +3859,12 @@ ESP32 Chip model = %u, Rev %u, Cores=%u, Features=%u)",
 
   LoadConfiguration(&mysettings);
   ValidateConfiguration(&mysettings);
-
+//Modification Trajilovic Goran START
+ initializeBMSIDs();
+    assignMaster();
+    setupCANCommunication();
+    checkDuplicateIDs();
+//Modification Trajilovic Goran ENDE
   if (strlen(mysettings.homeassist_apikey) == 0)
   {
     // Generate new key
@@ -4183,6 +4196,10 @@ void loop()
     // Wait another 30 seconds
     wifitimer = currentMillis + 30000;
   }
+  // Trajilovic Goran Modification START
+   processIncomingCANMessages();
+    delay(100);
+  // Trajilovic Goran Modification ENDE
 
   // Call update to receive, decode and process incoming packets
   myPacketSerial.checkInputStream();
@@ -4227,3 +4244,4 @@ void loop()
     }
   }
 }
+
