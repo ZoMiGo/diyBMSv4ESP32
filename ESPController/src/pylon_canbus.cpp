@@ -9,13 +9,61 @@
 This code communicates emulates a PYLON TECH BATTERY using CANBUS @ 500kbps and 11 bit addresses.
 
 */
-
+/*
+(c)2025 Trajilovic Goran
+www.globcast.eu gorance@live.de
+*/
 #define USE_ESP_IDF_LOG 1
 static constexpr const char *const TAG = "diybms-pylon";
 
 #include "pylon_canbus.h"
+#include <EEPROM.h>
+//#include "HAL_ESP32.h"
+
 
 // 0x351 – Battery voltage + current limits
+void setupPylonCanBus() {
+    ESP_LOGI(TAG, "Initializing Pylon CAN Bus");
+    //twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(RS485_RX, RS485_TX, TWAI_MODE_NORMAL);
+
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_21, GPIO_NUM_22, TWAI_MODE_NORMAL);
+    twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
+    twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+
+    if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
+        ESP_LOGI(TAG, "CAN Driver installed successfully");
+    } else {
+        ESP_LOGE(TAG, "Failed to install CAN Driver");
+    }
+}
+void requestDataFromSlaves() {
+    ESP_LOGI(TAG, "Requesting data from all slaves...");
+
+    for (int i = 0; i < 10; i++) {
+        uint8_t slaveID = EEPROM.read(i);
+        if (slaveID != 0) {
+            ESP_LOGI(TAG, "Requesting data from Slave ID: %d", slaveID);
+            twai_message_t message;
+            message.identifier = 0x100 + slaveID;
+            message.data_length_code = 8;
+            memset(message.data, 0, 8);
+            message.data[0] = slaveID;
+
+            if (twai_transmit(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
+                ESP_LOGI(TAG, "Request sent to Slave ID %d", slaveID);
+            } else {
+                ESP_LOGW(TAG, "Failed to send request to Slave ID %d", slaveID);
+            }
+        }
+    }
+}
+
+void forwardDataToVictron(uint8_t* data, size_t length) {
+    ESP_LOGI(TAG, "Forwarding data to Victron Cerbo GX");
+    for (size_t i = 0; i < length; i++) {
+        ESP_LOGI(TAG, "Data[%d]: 0x%02X", i, data[i]);
+    }
+}
 void pylon_message_351()
 {
   struct data351
@@ -277,4 +325,3 @@ void pylon_message_356()
 
   send_canbus_message(0x356, (uint8_t *)&data, sizeof(data356));
 }
-
