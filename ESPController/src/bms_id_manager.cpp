@@ -2,6 +2,7 @@
 (c)2025 Trajilovic Goran
 www.globcast.eu gorance@live.de
 */
+// bms_id_manager.cpp
 #include "bms_id_manager.h"
 #include <EEPROM.h>
 #include <esp_log.h>
@@ -9,18 +10,21 @@ www.globcast.eu gorance@live.de
 static const char* TAG = "BMS_ID_MANAGER";
 uint8_t lastID = 1;
 
+// Initialize BMS IDs
 void initializeBMSIDs() {
+    ESP_LOGI(TAG, "Initializing BMS IDs");
     for (int i = 0; i < 10; i++) { // Example for 10 modules
         uint8_t id = EEPROM.read(i);
         if (id == 0 || id > 100) {
             id = lastID++;
             EEPROM.write(i, id);
             EEPROM.commit();
-            ESP_LOGI(TAG, "Assigned ID %d to module %d", id, i);
         }
+        ESP_LOGI(TAG, "Module %d assigned ID: %d", i, id);
     }
 }
 
+// Assign Master BMS
 void assignMaster() {
     uint8_t masterID = 255;
     for (int i = 0; i < 10; i++) {
@@ -29,18 +33,21 @@ void assignMaster() {
             masterID = id;
         }
     }
-    ESP_LOGI(TAG, "Master module ID is %d", masterID);
+    ESP_LOGI(TAG, "Master BMS ID: %d", masterID);
 }
 
+// Check and resolve duplicate IDs
 void checkDuplicateIDs() {
+    uint8_t idList[10] = {0};
     for (int i = 0; i < 10; i++) {
-        for (int j = i + 1; j < 10; j++) {
-            if (EEPROM.read(i) == EEPROM.read(j)) {
-                uint8_t newID = lastID++;
-                EEPROM.write(j, newID);
-                EEPROM.commit();
-                ESP_LOGW(TAG, "Resolved duplicate ID for module %d, new ID %d", j, newID);
-            }
+        uint8_t id = EEPROM.read(i);
+        if (idList[id] > 0) {
+            id = lastID++;
+            EEPROM.write(i, id);
+            EEPROM.commit();
+            ESP_LOGW(TAG, "Duplicate ID resolved for Module %d. New ID: %d", i, id);
+        } else {
+            idList[id]++;
         }
     }
 }
