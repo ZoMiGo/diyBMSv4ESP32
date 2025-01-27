@@ -1,8 +1,11 @@
-/*
-(c)2025 Trajilovic Goran
-www.globcast.eu gorance@live.de
-*/
-// bms_id_manager.cpp
+/*------------------------------------------------------------------------
+ *
+ *   Project: BMS-ID Manager for DiyBMS by Stuart Pittaway
+ *
+ *   Author:  Trajilovic Goran (ZoMiGo)
+ *
+ * -----------------------------------------------------------------------
+ */
 #include "bms_id_manager.h"
 #include <EEPROM.h>
 #include <esp_log.h>
