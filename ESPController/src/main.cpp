@@ -12,7 +12,6 @@
   This code runs on ESP32 DEVKIT-C and compiles with VS CODE and PLATFORM IO environment.
 
   Unless you are making code changes, please use the pre-compiled version from GITHUB instead.
-  Modification by Trajilovic Goran
 */
 
 #if defined(ESP8266)
@@ -3619,7 +3618,7 @@ bool LoadWiFiConfigFromSDCard(const bool existingConfigValid)
   wifi["ssid"].as<String>().toCharArray(_new_config.wifi_ssid, sizeof(_new_config.wifi_ssid));
   wifi["password"].as<String>().toCharArray(_new_config.wifi_passphrase, sizeof(_new_config.wifi_passphrase));
 
-  if (wifi.containsKey("ip"))
+ if (wifi["ip"].is<std::string>())
   {
     // If the "ip" key exists, then it must be the newer format WIFI JSON document
     ip4_addr_t ipadd;
