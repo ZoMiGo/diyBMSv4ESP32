@@ -1,45 +1,10 @@
-# diyBMS v4
+# diyBMS v4 Modular
 
 Version 4 of the diyBMS.  Do-it-yourself battery management system for Lithium ion battery packs and cells
 
 If you are looking for version 3 of this project take a look here https://github.com/stuartpittaway/diyBMS
 
 THIS CODE IS FOR THE NEW CONTROLLER (AFTER FEB 2021) AND ESP32 DEVKIT-C
-
-# Support the project
-
-If you find the BMS useful, please consider buying me a beer, check out [Patreon](https://www.patreon.com/StuartP) for more information.
-
-You can also send beer tokens via Paypal - [https://paypal.me/stuart2222](https://paypal.me/stuart2222)
-
-Any donations go towards the on going development and prototype costs of the project.
-
-# Videos on how to use and build
-
-https://www.youtube.com/stuartpittaway
-
-### Video on how to program the devices
-https://youtu.be/wTqDMg_Ql98
-
-### Video on how to order from JLCPCB
-https://youtu.be/E1OS0ZOmOT8
-
-
-# How to use the code
-
-Instructions for programming/flashing the hardware can be [found here](ProgrammingHardware.md)
-
-# Help
-
-If you need help, ask over at the [forum](https://community.openenergymonitor.org/t/diybms-v4)
-
-If you discover a bug or want to make a feature suggestion, open a Github issue
-
-# Hardware
-
-Hardware for this code is in a seperate repository, and consists of a controller (you need 1 of these) and modules (one per series cell in your battery)
-
-https://github.com/stuartpittaway/diyBMSv4
 
 Here are the new functions described in detail:
 
@@ -132,12 +97,40 @@ CAN Message Processing:
 Handles incoming CAN messages, enabling integration with external systems like Victron devices.
 These features collectively enhance the robustness and functionality of the BMS system, ensuring reliable operation and efficient communication in a multi-module environment.
 
+# Support the project
+
+If you find the BMS useful, please consider buying me a beer, check out [Patreon](https://www.patreon.com/StuartP) for more information.
+
+You can also send beer tokens via Paypal - [https://paypal.me/stuart2222](https://paypal.me/stuart2222)
+
+Any donations go towards the on going development and prototype costs of the project.
+
+# Videos on how to use and build
+
+https://www.youtube.com/stuartpittaway
+
+### Video on how to program the devices
+https://youtu.be/wTqDMg_Ql98
+
+### Video on how to order from JLCPCB
+https://youtu.be/E1OS0ZOmOT8
 
 
+# How to use the code
 
+Instructions for programming/flashing the hardware can be [found here](ProgrammingHardware.md)
 
+# Help
 
+If you need help, ask over at the [forum](https://community.openenergymonitor.org/t/diybms-v4)
 
+If you discover a bug or want to make a feature suggestion, open a Github issue
+
+# Hardware
+
+Hardware for this code is in a seperate repository, and consists of a controller (you need 1 of these) and modules (one per series cell in your battery)
+
+https://github.com/stuartpittaway/diyBMSv4
 
 
 # WARNING
