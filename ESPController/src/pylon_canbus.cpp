@@ -10,7 +10,7 @@ This code communicates emulates a PYLON TECH BATTERY using CANBUS @ 500kbps and 
 
 */
 /*
-(c)2025 Trajilovic Goran
+(c)2025 Trajilovic Goran Add function BMS Serial ID
 www.globcast.eu gorance@live.de
 */
 #define USE_ESP_IDF_LOG 1
