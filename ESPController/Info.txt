@@ -1,0 +1,68 @@
+diyBMS Pylontech CAN-Bus Integration by Trajilovic Goran
+
+Description
+
+This project enables seamless integration between Pylontech BMS (Battery Management System) and Victron Cerbo GX via CAN-Bus using an ESP32 microcontroller. The system automatically detects Master and Slave modules, assigns unique IDs, aggregates battery data, and ensures stable communication with Victron.
+
+Features
+
+✅ Automatic Master & Slave Detection
+✅ Duplicate ID Correction & EEPROM Storage
+✅ Real-time Data Processing & Aggregation
+✅ Victron Compatible CAN-Bus Communication
+✅ Logging Support for ESP-IDF & Arduino Serial
+
+📌 How It Works
+
+1️⃣ Master & Slave Auto-Detection
+	•	The Master module (ID 0x351) is automatically recognized.
+	•	Slave modules (0x360+) are assigned dynamically.
+	•	If only one module is present, it operates in Master-only mode.
+
+2️⃣ Handling Duplicate CAN-IDs
+	•	If two modules share the same CAN-ID, the second module is assigned a new free ID.
+	•	Newly assigned IDs are stored in EEPROM for persistence.
+	•	Prevents conflicts & ensures stable communication.
+
+3️⃣ Data Processing for Victron
+	•	Voltage (V): Only the Master’s voltage is sent (Victron does not require summation).
+	•	Current (A): The total current from all modules is calculated and sent.
+	•	State of Charge (SoC %): The average SoC of all modules is computed and transmitted.
+
+4️⃣ Victron CAN-Bus Data Transmission
+	•	The ESP32 sends battery data to Victron at ID 0x355.
+	•	Automatic error handling & ID correction ensures reliable communication.
+
+📌 Example Serial Output
+
+Single Module (Master Only)
+
+[diybms-pylon] Module 0 [MASTER]: ID 0x351, 52.3V, 8.4A, SoC: 98.0%
+[diybms-pylon] Sent to Victron: 52.3V, 8.4A, SoC: 98.0%
+
+Multiple Modules (Master + Slaves)
+
+[diybms-pylon] Module 0 [MASTER]: ID 0x351, 52.3V, 8.4A, SoC: 98.0%
+[diybms-pylon] Module 1 [SLAVE]: ID 0x360, 52.1V, 8.3A, SoC: 97.8%
+[diybms-pylon] Module 2 [SLAVE]: ID 0x361, 52.2V, 8.5A, SoC: 98.1%
+[diybms-pylon] Sent to Victron: 52.3V, 25.2A, SoC: 98.0%
+
+📌 Installation & Setup
+
+1️⃣ Flash the ESP32 with the provided firmware.
+2️⃣ Connect the ESP32 CAN-Bus interface to the Pylontech BMS and Victron Cerbo GX.
+3️⃣ Monitor serial output to verify ID assignment & data transmission.
+4️⃣ Ensure Victron VenusOS recognizes the battery correctly.
+
+📌 Future Improvements
+	•	⚡ Adaptive load balancing for multiple BMS clusters
+	•	⚡ More detailed error handling for Victron VenusOS
+	•	⚡ WiFi integration for remote monitoring
+
+📌 License
+
+This project is open-source and follows the MIT license. Contributions are welcome!
+
+📌 Contact
+
+For support or questions, feel free to create an issue on GitHub or reach out to the community.
