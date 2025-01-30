@@ -1,3 +1,13 @@
+WARNING
+This is a DIY product/solution so don’t use this for safety critical systems or in any situation where there could be a risk to life.
+
+There is no warranty, it may not work as expected or at all.
+
+The use of this project is done so entirely at your own risk. It may involve electrical voltages which could kill - if in doubt, seek help.
+
+The use of this project may not be compliant with local laws or regulations - if in doubt, seek help.
+
+
 # diyBMS v4 Modular
 
 Version 4 of the diyBMS.  Do-it-yourself battery management system for Lithium ion battery packs and cells
