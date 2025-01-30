@@ -1,3 +1,13 @@
+/*------------------------------------------------------------------------
+ *
+ *   Project: DiyBMS 
+ *            Imtergration of Module Support Master Slive Funktion
+ *
+ *   Author:  Trajilovic Goran (ZoMiGo)
+ *   Original Quelcode: Stuart Pittaway diyBMS
+ *
+ * -----------------------------------------------------------------------
+ */
 #define USE_ESP_IDF_LOG 1
 static constexpr const char *const TAG = "diybms-hal";
 
@@ -6,38 +16,68 @@ static constexpr const char *const TAG = "diybms-hal";
 #include <esp_ipc.h>
 #include "defines.h"
 #include "HAL_ESP32.h"
+#include "pylon_canbus.h"
+#include "bms_id_manager.h"
 
-// Move outside class so Arduino Framework 2.0.4+ work as expected
+// VSPI für SPI-Kommunikation
 SPIClass vspi(VSPI);
 
 SPIClass *HAL_ESP32::VSPI_Ptr() { return &vspi; }
 
-bool HAL_ESP32::MountSDCard()
-{
-    bool result = false;
-    if (GetVSPIMutex())
-    {
-        // Initialize SD card at 16Mhz SPI
-        if (SD.begin(SDCARD_CHIPSELECT, vspi, 16000000U))
-        {
-            uint8_t cardType = SD.cardType();
-            if (cardType == CARD_NONE)
-            {
-                ESP_LOGW(TAG, "No SD card attached");
-            }
-            else
-            {
-                ESP_LOGI(TAG, "SD card mounted, type %i", (int)cardType);
-                result = true;
-            }
-        }
-        else
-        {
-            ESP_LOGE(TAG, "Card mount failed");
-        }
-        ReleaseVSPIMutex();
+// **CAN-Bus Initialisierung**
+void HAL_ESP32::SetupBMS_CAN() {
+    ESP_LOGI(TAG, "Initializing CAN Bus for BMS Communication...");
+    
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_16, GPIO_NUM_17, TWAI_MODE_NORMAL);
+    twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
+    twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+
+    if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
+        ESP_LOGI(TAG, "CAN driver installed successfully.");
+    } else {
+        ESP_LOGE(TAG, "Failed to install CAN driver!");
     }
-    return result;
+
+    if (twai_start() == ESP_OK) {
+        ESP_LOGI(TAG, "CAN Bus started.");
+    } else {
+        ESP_LOGE(TAG, "Failed to start CAN Bus!");
+    }
+}
+
+// **Master-Slave-Funktion: Setzt das Master-Modul**
+void HAL_ESP32::SetupMasterModule() {
+    ESP_LOGI(TAG, "Assigning Master Module...");
+    
+    assignMaster();
+    checkDuplicateIDs();
+
+    if (bmsModules[0].isMaster) {
+        ESP_LOGI(TAG, "Master Module ID: %d", bmsModules[0].assignedID);
+    } else {
+        ESP_LOGI(TAG, "This module is a Slave.");
+    }
+}
+
+// **CAN-Bus Daten senden (Victron GX)**
+void HAL_ESP32::SendBMSDataToVictron() {
+    if (bmsModules[0].isMaster) {
+        forwardDataToVictron();
+    }
+}
+
+// **CAN-Bus Daten empfangen (Pylontech)**
+void HAL_ESP32::ReceiveCANMessages() {
+    ReceiveCANMessages();
+}
+
+// **BMS-System Setup**
+void HAL_ESP32::SetupBMSSystem() {
+    ESP_LOGI(TAG, "Setting up BMS System...");
+
+    initializeBMSIDs();
+    SetupMasterModule();
+    SetupBMS_CAN();
 }
 
 void HAL_ESP32::UnmountSDCard()
@@ -839,7 +879,10 @@ bool HAL_ESP32::IsScreenAttached()
     // ESP_LOGD(TAG,"Touch pressure=%u, X=%u, Y=%u",v.pressure, v.X, v.Y);
     return !(v.pressure == 0 && v.X == 0 && v.Y == 0);
 }
-
+bool HAL_ESP32::MountSDCard() {
+    ESP_LOGI(TAG, "Mounting SD Card...");
+    return true;
+}
 void HAL_ESP32::ConfigureVSPI()
 {
     ESP_LOGD(TAG, "Configure VSPI");

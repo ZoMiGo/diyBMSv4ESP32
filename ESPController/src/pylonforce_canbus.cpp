@@ -663,4 +663,3 @@ In this 5 minutes, if there is a protection alarm, BMS will cut off the relay as
 }
 
 #pragma pack(pop)
-

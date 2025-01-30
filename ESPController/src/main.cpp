@@ -2706,10 +2706,6 @@ void _send_canbus_message(const uint32_t identifier, const uint8_t *buffer, cons
   }
 }
 
-void send_canbus_message(const uint32_t identifier, const uint8_t *buffer, const uint8_t length)
-{
-  _send_canbus_message(identifier, buffer, length, TWAI_MSG_FLAG_NONE);
-}
 void send_ext_canbus_message(const uint32_t identifier, const uint8_t *buffer, const uint8_t length)
 {
   _send_canbus_message(identifier, buffer, length, TWAI_MSG_FLAG_EXTD);
@@ -3775,10 +3771,16 @@ void suspendTasksDuringFirmwareUpdate()
   vTaskSuspend(lazy_task_handle);
   vTaskSuspend(canbus_rx_task_handle);
 }
-
+void canbus_task(void *pvParameters) {
+    while (1) {
+        receiveCANMessages();  // Call function to check for responses
+        vTaskDelay(pdMS_TO_TICKS(50)); // Reduce CPU load
+    }
+}
 void setup()
 {
   esp_chip_info_t chip_info;
+    xTaskCreatePinnedToCore(canbus_task, "CAN_Receive", 4096, NULL, 1, NULL, 1);
 
   // Configure log levels
   for (auto log : log_levels)

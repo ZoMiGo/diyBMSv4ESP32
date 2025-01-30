@@ -10,95 +10,135 @@
  */
 
 
+#include "pylon_canbus.h"
+#include "bms_id_manager.h"  // Include the ID Manager
+
+extern uint8_t totalSlaves;  // Declare global variable
+
 #define USE_ESP_IDF_LOG 1
 static constexpr const char *const TAG = "diybms-pylon";
 
-#include "pylon_canbus.h"
-#include <EEPROM.h>
-#include "HAL_ESP32.h"
+ConsolidatedData consolidatedData;
 
-bool isMaster = false; // Global variable to determine if this module is the master
+void send_canbus_message(uint32_t identifier, const uint8_t *buffer, const uint8_t length) {
+    // Define message type descriptions
+    const char* messageType = "Unknown Message";
 
+    switch (identifier) {
+        case 0x351: messageType = "Charge/Discharge Limits"; break;
+        case 0x355: messageType = "State of Charge/Health"; break;
+        case 0x356: messageType = "Voltage/Current/Temperature"; break;
+        case 0x359: messageType = "Status Flags"; break;
+        case 0x35C: messageType = "Charge/Discharge Enable"; break;
+        case 0x35E: messageType = "Pylontech Identifier"; break;
+        case 0x301: case 0x302: case 0x303: case 0x304: case 0x305:
+            messageType = "Slave Data Request"; break;
+        default: break;
+    }
+
+    //FIXED: Avoid duplicate "[diybms-pylon]" in logs
+    ESP_LOGI(TAG, "[%s] CAN ID: 0x%03X Sent", messageType, identifier);
+
+    twai_message_t message;
+    message.identifier = identifier;
+    message.flags = TWAI_MSG_FLAG_NONE;
+    message.data_length_code = length;
+    memcpy(message.data, buffer, length);
+
+    if (twai_transmit(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
+        ESP_LOGI(TAG, "[%s] Sent Successfully", messageType);
+    } else {
+        ESP_LOGE(TAG, "[%s] Failed to Send", messageType);
+    }
+}
+
+// **CAN-Bus Initialisierung**
 void setupPylonCanBus() {
-    ESP_LOGI(TAG, "Initializing Pylon CAN Bus");
-    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(RS485_RX, RS485_TX, TWAI_MODE_NORMAL);
+    ESP_LOGI(TAG, "Initializing Pylontech CAN Bus...");
+
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_16, GPIO_NUM_17, TWAI_MODE_NORMAL);
     twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
     if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
-        ESP_LOGI(TAG, "CAN Driver installed successfully");
+        ESP_LOGI(TAG, "Pylontech CAN Bus initialized.");
     } else {
-        ESP_LOGE(TAG, "Failed to install CAN Driver");
+        ESP_LOGE(TAG, "Failed to initialize Pylontech CAN Bus.");
     }
 }
 
-void setupModuleRole() {
-    uint8_t moduleID = EEPROM.read(0); // Read ID from EEPROM
-
-    if (moduleID == 1) { // Master Module
-        isMaster = true;
-        ESP_LOGI(TAG, "This module is the Master (ID: %d)", moduleID);
-    } else { // Slave Module
-        isMaster = false;
-        ESP_LOGI(TAG, "This module is a Slave (ID: %d)", moduleID);
-    }
-}
-
-// Master-specific functionality
+// **Daten von Slaves abrufen**
 void requestDataFromSlaves() {
-    ESP_LOGI(TAG, "Requesting data from all slaves...");
+    ESP_LOGI(TAG, "[diybms-pylon] Requesting data from %d Slaves...", totalSlaves);
 
-    for (int i = 0; i < 10; i++) {
-        uint8_t slaveID = EEPROM.read(i);
-        if (slaveID != 0) {
-            ESP_LOGI(TAG, "Requesting data from Slave ID: %d", slaveID);
-            twai_message_t message;
-            message.identifier = 0x100 + slaveID;
-            message.data_length_code = 8;
-            memset(message.data, 0, 8);
-            message.data[0] = slaveID;
-
-            if (twai_transmit(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
-                ESP_LOGI(TAG, "Request sent to Slave ID %d", slaveID);
-            } else {
-                ESP_LOGW(TAG, "Failed to send request to Slave ID %d", slaveID);
-            }
-        }
+    for (uint8_t slaveID = 1; slaveID <= totalSlaves; slaveID++) {
+        ESP_LOGI(TAG, "[CANBUS] Requesting from Slave ID: %d", slaveID);
+        send_canbus_message(0x300 + slaveID, (uint8_t *)&slaveID, sizeof(slaveID));
     }
 }
 
-void receiveDataFromSlaves() {
-    twai_message_t message;
-    while (twai_receive(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
-        uint8_t slaveID = message.identifier - 0x200; // Extract Slave ID
-        uint16_t voltage = (message.data[0] << 8) + message.data[1];
-        int8_t temperature = message.data[2];
-
-        ESP_LOGI(TAG, "Received data from Slave %d: Voltage=%d, Temp=%d", slaveID, voltage, temperature);
-
-        // Process or store received data
-    }
+// **Daten aus Slaves konsolidieren**
+void consolidateSlaveData(uint8_t slaveID, uint16_t voltage, uint16_t current, uint16_t soc) {
+    consolidatedData.minVoltage = std::min(consolidatedData.minVoltage, voltage);
+    consolidatedData.maxVoltage = std::max(consolidatedData.maxVoltage, voltage);
+    consolidatedData.totalCurrent += current;
+    consolidatedData.soc = std::max(consolidatedData.soc, soc);
+    consolidatedData.soh = 100;
 }
 
-// Slave-specific functionality
-void sendDataToMaster() {
+// **Daten an Victron weiterleiten**
+void forwardDataToVictron() {
     twai_message_t message;
-    message.identifier = 0x200 + EEPROM.read(0); // Slave ID-based Identifier
-    message.data_length_code = 8;
-    memset(message.data, 0, 8);
-
-    // Example: Sending Voltage and Temperature
-    message.data[0] = rules.highestBankVoltage / 256;  // High Byte of Voltage
-    message.data[1] = rules.highestBankVoltage % 256;  // Low Byte of Voltage
-    message.data[2] = rules.highestExternalTemp;       // Temperature
+    message.identifier = 0x355;
+    message.data_length_code = 4;
+    message.data[0] = (consolidatedData.soc & 0xFF00) >> 8;
+    message.data[1] = (consolidatedData.soc & 0x00FF);
+    message.data[2] = (consolidatedData.soh & 0xFF00) >> 8;
+    message.data[3] = (consolidatedData.soh & 0x00FF);
 
     if (twai_transmit(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
-        ESP_LOGI(TAG, "Data sent to Master");
+        ESP_LOGI(TAG, "SOC and SOH forwarded to Victron");
     } else {
-        ESP_LOGW(TAG, "Failed to send data to Master");
+        ESP_LOGW(TAG, "Failed to forward SOC and SOH to Victron");
+    }
+}
+void receiveCANMessages() {
+    twai_message_t message;
+
+    // Attempt to receive a CAN message with a timeout
+    esp_err_t result = twai_receive(&message, pdMS_TO_TICKS(100));
+
+    if (result == ESP_OK) {
+        ESP_LOGI(TAG, "[CANBUS] Received CAN ID: 0x%03X DLC: %d", message.identifier, message.data_length_code);
+
+        // Print all received message data
+        for (int i = 0; i < message.data_length_code; i++) {
+            ESP_LOGI(TAG, "[CANBUS] Data[%d]: 0x%02X", i, message.data[i]);
+        }
+    } 
+    else if (result == ESP_ERR_TIMEOUT) {
+        ESP_LOGW(TAG, "[CANBUS] No messages received (timeout)");
+    } 
+    else {
+        ESP_LOGE(TAG, "[CANBUS] Error receiving message: %s", esp_err_to_name(result));
     }
 }
 
+void receiveCAN() {
+    twai_message_t rx_frame;
+    if (twai_receive(&rx_frame, pdMS_TO_TICKS(1000)) == ESP_OK) {
+        ESP_LOGI(TAG, "[RECEIVED] CAN ID: 0x%03X DLC: %d", rx_frame.identifier, rx_frame.data_length_code);
+        
+        // Print received data for debugging
+        Serial.print("[RECEIVED] Data: ");
+        for (int i = 0; i < rx_frame.data_length_code; i++) {
+            Serial.printf("%02X ", rx_frame.data[i]);
+        }
+        Serial.println();
+    } else {
+        ESP_LOGW(TAG, "[CANBUS] No response from slaves");
+    }
+}
 // Pylon-specific messages
 void pylon_message_351() {
     struct data351 {
@@ -259,4 +299,3 @@ void pylon_message_356() {
 
     send_canbus_message(0x356, (uint8_t *)&data, sizeof(data356));
 }
-
