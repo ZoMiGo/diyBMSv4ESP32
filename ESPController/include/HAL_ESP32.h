@@ -93,6 +93,12 @@ public:
 
     void ConfigureI2C(void (*TCA6408Interrupt)(void), void (*TCA9534AInterrupt)(void), void (*TCA6416Interrupt)(void));
     void SetOutputState(uint8_t outputId, RelayState state);
+        // **CAN-Bus & Master-Slave Verwaltung**
+    void SetupBMS_CAN();
+    void SetupMasterModule();
+    void SendBMSDataToVictron();
+    void ReceiveCANMessages();
+    void SetupBMSSystem();
     uint8_t ReadTCA6408InputRegisters();
     uint8_t ReadTCA9534InputRegisters();
     uint16_t ReadTCA6416InputRegisters();

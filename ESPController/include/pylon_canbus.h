@@ -1,8 +1,16 @@
-/*
-(c)2025 Trajilovic Goran
-www.globcast.eu
-*/
-#ifndef DIYBMS_PYLON_CANBUS_H_ 
+
+/*------------------------------------------------------------------------
+ *
+ *   Project: PYLON TECH BATTERY Emulator for DiyBMS by Stuart Pittaway
+ *            Using Canbus @ 500kbps and 11 bit addresses.
+ *
+ *   Author:  Trajilovic Goran (ZoMiGo)
+ *   Original Quelcode: Stuart Pittaway
+ *
+ * -----------------------------------------------------------------------
+ */
+
+#ifndef DIYBMS_PYLON_CANBUS_H_
 #define DIYBMS_PYLON_CANBUS_H_
 
 #include "defines.h"
@@ -10,7 +18,12 @@ www.globcast.eu
 #include <driver/twai.h>
 #include <cstring>
 #include <cmath>
-#include <algorithm> // for std::min and std::max
+#include <algorithm>
+#include "pylon_canbus.h"
+
+// Logging & Debugging
+//#define USE_ESP_IDF_LOG 1
+//static constexpr const char *const TAG = "diybms-pylon";
 
 // Externe Variablen
 extern uint32_t canbus_messages_sent;
@@ -22,25 +35,27 @@ extern currentmonitoring_struct currentMonitor;
 extern uint8_t TotalNumberOfCells();
 extern std::string hostname;
 extern uint32_t canbus_messages_received;
+extern void send_canbus_message(uint32_t identifier, const uint8_t *buffer, uint8_t length);
 
-// Struktur zur Konsolidierung der Daten
+// Datenstruktur für CAN-Bus Nachrichten
 struct ConsolidatedData {
     uint16_t minVoltage = 0xFFFF;
     uint16_t maxVoltage = 0;
     int16_t totalCurrent = 0;
-    uint16_t soc = 0;  // State of Charge
-    uint16_t soh = 0;  // State of Health
+    uint16_t soc = 0;
+    uint16_t soh = 0;
 };
 
 extern ConsolidatedData consolidatedData;
 
-// Funktionen
-void send_canbus_message(uint32_t identifier, const uint8_t *buffer, const uint8_t length);
+// Funktionen für CAN-Kommunikation
 void setupPylonCanBus();
 void requestDataFromSlaves();
 void consolidateSlaveData(uint8_t slaveID, uint16_t voltage, uint16_t current, uint16_t soc);
 void forwardDataToVictron();
+void receiveCANMessages();  // Add this function prototype
 
+// Pylontech-spezifische CAN-Nachrichten
 void pylon_message_351();
 void pylon_message_355();
 void pylon_message_356();
@@ -48,34 +63,4 @@ void pylon_message_359();
 void pylon_message_35c();
 void pylon_message_35e();
 
-// Konsolidierung der empfangenen Daten
-inline void consolidateSlaveData(uint8_t slaveID, uint16_t voltage, uint16_t current, uint16_t soc) {
-    consolidatedData.minVoltage = std::min(consolidatedData.minVoltage, voltage);
-    consolidatedData.maxVoltage = std::max(consolidatedData.maxVoltage, voltage);
-    consolidatedData.totalCurrent += current;
-    consolidatedData.soc = std::max(consolidatedData.soc, soc);
-    // SOH wird hier exemplarisch auf 100% gesetzt
-    consolidatedData.soh = 100;
-}
-
-// Weiterleitung der konsolidierten Daten an Victron
-inline void forwardDataToVictron() {
-    // Beispiel: Weiterleiten der SOC und SOH
-    twai_message_t message;
-    message.identifier = 0x355;  // Beispiel-SOC/SOH-Identifier
-    message.data_length_code = 4;
-    message.data[0] = (consolidatedData.soc & 0xFF00) >> 8;
-    message.data[1] = (consolidatedData.soc & 0x00FF);
-    message.data[2] = (consolidatedData.soh & 0xFF00) >> 8;
-    message.data[3] = (consolidatedData.soh & 0x00FF);
-
-    if (twai_transmit(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
-        ESP_LOGI("PylonTech", "SOC and SOH forwarded to Victron");
-    } else {
-        ESP_LOGW("PylonTech", "Failed to forward SOC and SOH to Victron");
-    }
-}
-
-#endif
-
-
+#endif // DIYBMS_PYLON_CANBUS_H_
