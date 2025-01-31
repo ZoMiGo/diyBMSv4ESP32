@@ -1,10 +1,9 @@
 /*------------------------------------------------------------------------
  *
- *   Project: PYLON TECH BATTERY Emulator for DiyBMS by Stuart Pittaway
+ *   Project: PYLON TECH BATTERY Emulator for DiyBMS
  *            Using Canbus @ 500kbps and 11 bit addresses.
  *
  *   Author:  Trajilovic Goran (ZoMiGo)
- *   Original Quelcode: Stuart Pittaway
  *
  * -----------------------------------------------------------------------
  */
@@ -13,15 +12,15 @@
 #include "pylon_canbus.h"
 #include "bms_id_manager.h"  // Include the ID Manager
 
-extern uint8_t totalSlaves;  // Declare global variable
+extern uint8_t totalSlaves;  // Deklarierte globale Variable
 
 #define USE_ESP_IDF_LOG 1
 static constexpr const char *const TAG = "diybms-pylon";
 
-ConsolidatedData consolidatedData;
+ConsolidatedData consolidatedData;  // Hier wird die Struktur instanziiert
 
+// CAN-Bus Nachricht senden
 void send_canbus_message(uint32_t identifier, const uint8_t *buffer, const uint8_t length) {
-    // Define message type descriptions
     const char* messageType = "Unknown Message";
 
     switch (identifier) {
@@ -36,7 +35,6 @@ void send_canbus_message(uint32_t identifier, const uint8_t *buffer, const uint8
         default: break;
     }
 
-    //FIXED: Avoid duplicate "[diybms-pylon]" in logs
     ESP_LOGI(TAG, "[%s] CAN ID: 0x%03X Sent", messageType, identifier);
 
     twai_message_t message;
@@ -52,7 +50,7 @@ void send_canbus_message(uint32_t identifier, const uint8_t *buffer, const uint8
     }
 }
 
-// **CAN-Bus Initialisierung**
+// CAN-Bus Initialisierung
 void setupPylonCanBus() {
     ESP_LOGI(TAG, "Initializing Pylontech CAN Bus...");
 
@@ -67,7 +65,7 @@ void setupPylonCanBus() {
     }
 }
 
-// **Daten von Slaves abrufen**
+// Daten von Slaves abrufen
 void requestDataFromSlaves() {
     ESP_LOGI(TAG, "[diybms-pylon] Requesting data from %d Slaves...", totalSlaves);
 
@@ -77,69 +75,74 @@ void requestDataFromSlaves() {
     }
 }
 
-// **Daten aus Slaves konsolidieren**
+// Daten aus Slaves konsolidieren
 void consolidateSlaveData(uint8_t slaveID, uint16_t voltage, uint16_t current, uint16_t soc) {
-    consolidatedData.minVoltage = std::min(consolidatedData.minVoltage, voltage);
-    consolidatedData.maxVoltage = std::max(consolidatedData.maxVoltage, voltage);
-    consolidatedData.totalCurrent += current;
-    consolidatedData.soc = std::max(consolidatedData.soc, soc);
-    consolidatedData.soh = 100;
-}
+    if (isMaster) {  // Nur der Master konsolidiert die Daten
+        // Akkumuliert die Spannung
+        consolidatedData.totalVoltage += voltage;  // Gesamtspannung der Slaves
 
-// **Daten an Victron weiterleiten**
-void forwardDataToVictron() {
-    twai_message_t message;
-    message.identifier = 0x355;
-    message.data_length_code = 4;
-    message.data[0] = (consolidatedData.soc & 0xFF00) >> 8;
-    message.data[1] = (consolidatedData.soc & 0x00FF);
-    message.data[2] = (consolidatedData.soh & 0xFF00) >> 8;
-    message.data[3] = (consolidatedData.soh & 0x00FF);
+        // Akkumuliert den Strom
+        consolidatedData.totalCurrent += current;
 
-    if (twai_transmit(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
-        ESP_LOGI(TAG, "SOC and SOH forwarded to Victron");
-    } else {
-        ESP_LOGW(TAG, "Failed to forward SOC and SOH to Victron");
+        // Berechne den höchsten SOC
+        consolidatedData.soc = std::max(consolidatedData.soc, soc);
+
+        // Beispielwert für SOH (State of Health)
+        consolidatedData.soh = 100;
     }
 }
+
+
+
+// Daten an Victron weiterleiten (nur vom Master)
+// Nur der Master sendet die konsolidierten Daten an Victron
+void forwardDataToVictron() {
+    if (isMaster) {  // Nur der Master sendet an Victron
+        twai_message_t message;
+        message.identifier = 0x355;  // CAN-ID für SOC und SOH
+        message.data_length_code = 4;
+
+        // Die Gesamtspannung wird als SOC gesendet
+        message.data[0] = (consolidatedData.totalVoltage & 0xFF00) >> 8;  // High Byte der Gesamtspannung
+        message.data[1] = (consolidatedData.totalVoltage & 0x00FF);         // Low Byte der Gesamtspannung
+        message.data[2] = (consolidatedData.soh & 0xFF00) >> 8;            // High Byte des SOH
+        message.data[3] = (consolidatedData.soh & 0x00FF);                 // Low Byte des SOH
+
+        if (twai_transmit(&message, pdMS_TO_TICKS(1000)) == ESP_OK) {
+            ESP_LOGI(TAG, "Total voltage and SOH forwarded to Victron");
+        } else {
+            ESP_LOGW(TAG, "Failed to forward total voltage and SOH to Victron");
+        }
+    }
+}
+// CAN-Nachrichten empfangen und an Victron weiterleiten
 void receiveCANMessages() {
     twai_message_t message;
-
-    // Attempt to receive a CAN message with a timeout
     esp_err_t result = twai_receive(&message, pdMS_TO_TICKS(100));
 
     if (result == ESP_OK) {
         ESP_LOGI(TAG, "[CANBUS] Received CAN ID: 0x%03X DLC: %d", message.identifier, message.data_length_code);
 
-        // Print all received message data
         for (int i = 0; i < message.data_length_code; i++) {
             ESP_LOGI(TAG, "[CANBUS] Data[%d]: 0x%02X", i, message.data[i]);
         }
-    } 
-    else if (result == ESP_ERR_TIMEOUT) {
+
+        // Wenn der Master Daten empfangen hat, konsolidiere und sende sie an Victron
+        if (isMaster) {
+            // Hier wird die Konsolidierung und Weiterleitung an Victron ausgelöst.
+            // Beispiel: Konsolidiere Daten, wenn nötig
+             forwardDataToVictron();  // Die Daten werden nur vom Master weitergeleitet
+        }
+    } else if (result == ESP_ERR_TIMEOUT) {
         ESP_LOGW(TAG, "[CANBUS] No messages received (timeout)");
-    } 
-    else {
+    } else {
         ESP_LOGE(TAG, "[CANBUS] Error receiving message: %s", esp_err_to_name(result));
     }
 }
 
-void receiveCAN() {
-    twai_message_t rx_frame;
-    if (twai_receive(&rx_frame, pdMS_TO_TICKS(1000)) == ESP_OK) {
-        ESP_LOGI(TAG, "[RECEIVED] CAN ID: 0x%03X DLC: %d", rx_frame.identifier, rx_frame.data_length_code);
-        
-        // Print received data for debugging
-        Serial.print("[RECEIVED] Data: ");
-        for (int i = 0; i < rx_frame.data_length_code; i++) {
-            Serial.printf("%02X ", rx_frame.data[i]);
-        }
-        Serial.println();
-    } else {
-        ESP_LOGW(TAG, "[CANBUS] No response from slaves");
-    }
-}
-// Pylon-specific messages
+
+
+
 void pylon_message_351() {
     struct data351 {
         uint16_t battery_charge_voltage;
@@ -179,7 +182,6 @@ void pylon_message_351() {
 
     send_canbus_message(0x351, (uint8_t *)&data, sizeof(data351));
 }
-
 void pylon_message_355() {
     if (_controller_state != ControllerState::Running) return;
 
@@ -196,84 +198,6 @@ void pylon_message_355() {
         send_canbus_message(0x355, (uint8_t *)&data, sizeof(data355));
     }
 }
-
-void pylon_message_359() {
-    struct data359 {
-        uint8_t byte0;
-        uint8_t byte1;
-        uint8_t byte2;
-        uint8_t byte3;
-        uint8_t byte4;
-        uint8_t byte5;
-        uint8_t byte6;
-        uint8_t byte7;
-    };
-
-    data359 data;
-    memset(&data, 0, sizeof(data359));
-
-    if (_controller_state == ControllerState::Running) {
-        data.byte0 |= ((rules.ruleOutcome(Rule::BankOverVoltage) || rules.ruleOutcome(Rule::CurrentMonitorOverVoltage)) ? B00000010 : 0);
-        data.byte0 |= ((rules.ruleOutcome(Rule::BankUnderVoltage) || rules.ruleOutcome(Rule::CurrentMonitorUnderVoltage)) ? B00000100 : 0);
-
-        if (rules.moduleHasExternalTempSensor) {
-            data.byte0 |= (rules.ruleOutcome(Rule::ModuleOverTemperatureExternal) ? B00001000 : 0);
-            data.byte0 |= (rules.ruleOutcome(Rule::ModuleUnderTemperatureExternal) ? B00010000 : 0);
-        }
-
-        data.byte2 = 0;
-        if (rules.highestBankVoltage / 100 > mysettings.chargevolt) {
-            data.byte2 |= B00000010;
-        }
-        if (rules.lowestBankVoltage / 100 < mysettings.dischargevolt) {
-            data.byte2 |= B00000100;
-        }
-        if (rules.moduleHasExternalTempSensor && rules.highestExternalTemp > mysettings.chargetemphigh) {
-            data.byte2 |= B00001000;
-        }
-        if (rules.moduleHasExternalTempSensor && rules.lowestExternalTemp < mysettings.chargetemplow) {
-            data.byte2 |= B00010000;
-        }
-    }
-
-    data.byte3 |= ((_controller_state != ControllerState::Running) ? B00001000 : 0);
-
-    if (mysettings.currentMonitoringEnabled && currentMonitor.validReadings) {
-        data.byte4 = max((uint8_t)1, (uint8_t)round(mysettings.nominalbatcap / 74.0));
-    } else {
-        data.byte4 = 1;
-    }
-
-    data.byte5 = 0x50;
-    data.byte6 = 0x4e;
-
-    send_canbus_message(0x359, (uint8_t *)&data, sizeof(data359));
-}
-
-void pylon_message_35c() {
-    struct data35c {
-        uint8_t byte0;
-    };
-
-    data35c data;
-    data.byte0 = 0;
-
-    if (rules.IsChargeAllowed(&mysettings)) {
-        data.byte0 |= B10000000;
-    }
-
-    if (rules.IsDischargeAllowed(&mysettings)) {
-        data.byte0 |= B01000000;
-    }
-
-    send_canbus_message(0x35c, (uint8_t *)&data, sizeof(data35c));
-}
-
-void pylon_message_35e() {
-    uint8_t pylon[] = {0x50, 0x59, 0x4c, 0x4f, 0x4e, 0x20, 0x20, 0x20};
-    send_canbus_message(0x35e, (uint8_t *)&pylon, sizeof(pylon));
-}
-
 void pylon_message_356() {
     struct data356 {
         int16_t voltage;
@@ -298,4 +222,52 @@ void pylon_message_356() {
     }
 
     send_canbus_message(0x356, (uint8_t *)&data, sizeof(data356));
+}
+void pylon_message_359() {
+    struct data359 {
+        uint8_t byte0;
+        uint8_t byte1;
+        uint8_t byte2;
+        uint8_t byte3;
+        uint8_t byte4;
+        uint8_t byte5;
+        uint8_t byte6;
+        uint8_t byte7;
+    };
+
+    data359 data;
+    memset(&data, 0, sizeof(data359));
+
+    if (_controller_state == ControllerState::Running) {
+        data.byte0 |= ((rules.ruleOutcome(Rule::BankOverVoltage) || rules.ruleOutcome(Rule::CurrentMonitorOverVoltage)) ? B00000010 : 0);
+        data.byte0 |= ((rules.ruleOutcome(Rule::BankUnderVoltage) || rules.ruleOutcome(Rule::CurrentMonitorUnderVoltage)) ? B00000100 : 0);
+        if (rules.moduleHasExternalTempSensor) {
+            data.byte0 |= (rules.ruleOutcome(Rule::ModuleOverTemperatureExternal) ? B00001000 : 0);
+            data.byte0 |= (rules.ruleOutcome(Rule::ModuleUnderTemperatureExternal) ? B00010000 : 0);
+        }
+    }
+
+    send_canbus_message(0x359, (uint8_t *)&data, sizeof(data359));
+}
+void pylon_message_35c() {
+    struct data35c {
+        uint8_t byte0;
+    };
+
+    data35c data;
+    data.byte0 = 0;
+
+    if (rules.IsChargeAllowed(&mysettings)) {
+        data.byte0 |= B10000000;
+    }
+
+    if (rules.IsDischargeAllowed(&mysettings)) {
+        data.byte0 |= B01000000;
+    }
+
+    send_canbus_message(0x35c, (uint8_t *)&data, sizeof(data35c));
+}
+void pylon_message_35e() {
+    uint8_t pylon[] = {0x50, 0x59, 0x4c, 0x4f, 0x4e, 0x20, 0x20, 0x20};
+    send_canbus_message(0x35e, (uint8_t *)&pylon, sizeof(pylon));
 }

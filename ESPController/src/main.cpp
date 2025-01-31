@@ -4156,11 +4156,28 @@ void logActualTime()
   }
 }
 
+#include "pylon_canbus.h"
+bool isMaster = false;  // Standardmäßig ist das Modul der Slave
+
+// Entferne diesen Abschnitt aus pylon_canbus.cpp
+void setupModuleRole() {
+    uint8_t moduleID = EEPROM.read(0);  // ID aus EEPROM lesen
+
+    if (moduleID == 1) { // Wenn das Modul die ID 1 hat, wird es als Master betrachtet
+        isMaster = true;
+        ESP_LOGI(TAG, "This module is the Master (ID: %d)", moduleID);
+    } else { // Andernfalls wird das Modul als Slave betrachtet
+        isMaster = false;
+        ESP_LOGI(TAG, "This module is a Slave (ID: %d)", moduleID);
+    }
+}
+
+
 void loop()
 {
   //vTaskDelete(NULL);  
   delay(250);
-    static uint32_t lastSlaveRequest = 0;
+/*    static uint32_t lastSlaveRequest = 0;
     static uint32_t lastVictronTransmit = 0;
 
     uint32_t now = millis();
@@ -4169,7 +4186,7 @@ void loop()
         requestDataFromSlaves();
         lastSlaveRequest = now;
     }
-    delay(100);
+    delay(100);*/
   auto currentMillis = millis();
 
   if (card_action == CardAction::Mount)
