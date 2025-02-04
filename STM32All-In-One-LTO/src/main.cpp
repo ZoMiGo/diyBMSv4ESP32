@@ -372,15 +372,26 @@ void configureModules()
   CellModuleConfig config;
 
   // Default values for cells
-  float Calibration = 1.0F;
-  uint8_t BypassTemperatureSetPoint = 55;
-  uint16_t BypassThresholdmV = 4250;
-  uint16_t relay_range = 5;
-  uint16_t relay_minimummv = 3400;
-  int16_t fanswitchontemperature = BypassTemperatureSetPoint - 8;
+  //float Calibration = 1.0F;
+  //uint8_t BypassTemperatureSetPoint = 55;
+  //uint16_t BypassThresholdmV = 4250;
+  //uint16_t relay_range = 5;
+  //uint16_t relay_minimummv = 3400;
+  //int16_t fanswitchontemperature = BypassTemperatureSetPoint - 8;
 
-  uint16_t RunAwayCellMinimumVoltage = 3400;
-  uint16_t RunAwayCellDifferential = 75;
+  //uint16_t RunAwayCellMinimumVoltage = 3400;
+  //uint16_t RunAwayCellDifferential = 75;
+
+  // LTO-specific values BY tRAJILOVIC gORAN
+float Calibration = 1.0F;
+uint8_t BypassTemperatureSetPoint = 60; // Bypass-Widerstände schalten bei 60°C ab
+uint16_t BypassThresholdmV = 2700; // Balancing beginnt ab 2.7V
+uint16_t relay_range = 5; // Unverändert
+uint16_t relay_minimummv = 1800; // Minimale Zellspannung für LTO-Zellen ist 1.8V
+int16_t fanswitchontemperature = BypassTemperatureSetPoint - 8; // Lüfter schaltet bei 52°C ein
+
+uint16_t RunAwayCellMinimumVoltage = 1800; // Untere Grenze für LTO-Zellen
+uint16_t RunAwayCellDifferential = 50; // Etwas geringere Differenz, um unnötiges Balancing zu vermeiden
 
   flash_copy_buffer((uint8_t *)&config, sizeof(CellModuleConfig));
   // If we have a FLASH configuration, use that...
@@ -875,7 +886,6 @@ uint16_t DoCellBalancing(const int16_t highestTemp)
   uint32_t total;
 
   CalculateCellVoltageMinMaxAvg(celldata, number_of_active_cells, lowestmV, highestmV, range, highest_index, total);
-
   // Switch relay off
   if (HAL_GetTick() > relay_timer)
   {
@@ -1095,3 +1105,4 @@ void loop()
     countdown--;
   }
 }
+
