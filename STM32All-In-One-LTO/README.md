@@ -1,4 +1,4 @@
-# DIYBMS All-in-one 16S monitoring board
+# DIYBMS All-in-one 16S monitoring board for LTO
 
 This is the code for the (up to) 16S monitoring board.
 
