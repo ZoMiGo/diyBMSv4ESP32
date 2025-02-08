@@ -1,185 +1,108 @@
-WARNING
-This is a DIY product/solution so don’t use this for safety critical systems or in any situation where there could be a risk to life.
+DIYBMS v4 Modular – ESP32 BMS System
 
-There is no warranty, it may not work as expected or at all.
+⚠️ WARNUNG
+	•	Dies ist ein DIY-Projekt. Nicht für sicherheitskritische Anwendungen geeignet!
+	•	Keine Garantie – Nutzung auf eigene Gefahr!
+	•	Hochspannung kann tödlich sein! Falls du dir unsicher bist, hole dir professionelle Hilfe.
+	•	Die Nutzung dieses Projekts könnte gegen lokale Vorschriften verstoßen. Informiere dich vorher!
 
-The use of this project is done so entirely at your own risk. It may involve electrical voltages which could kill - if in doubt, seek help.
+📌 Projektübersicht
 
-The use of this project may not be compliant with local laws or regulations - if in doubt, seek help.
+DIYBMS v4 ist eine Open-Source-Lösung zur Überwachung und Steuerung von Lithium-Ionen-Batterien.
+Mit einem ESP32 als BMS-Controller und einzelnen Modulen für jede Zelle verwaltet es Spannung, Temperatur, Ladezustand (SOC) und Kommunikation mit externen Geräten wie Victron Cerbo GX.
 
+	Vorherige Versionen:
+Falls du nach DIYBMS v3 suchst: Hier geht’s zum Repository
 
-# diyBMS v4 Modular
+🆕 Neue Funktionen & Verbesserungen
 
-Version 4 of the diyBMS.  Do-it-yourself battery management system for Lithium ion battery packs and cells
+Diese Version bringt viele neue Features für ein stabiles, sicheres und effizientes BMS:
 
-If you are looking for version 3 of this project take a look here https://github.com/stuartpittaway/diyBMS
+1️⃣ Automatische ID-Vergabe an Module
+	•	Die BMS-Module erhalten beim Start automatisch eine eindeutige ID.
+	•	IDs werden im EEPROM gespeichert und beim Neustart wiederhergestellt.
+	•	Falls eine ID fehlt oder fehlerhaft ist, wird sie automatisch neu vergeben.
 
-THIS CODE IS FOR THE NEW CONTROLLER (AFTER FEB 2021) AND ESP32 DEVKIT-C
+2️⃣ Master-Slave-System
+	•	Das Modul mit der niedrigsten ID wird automatisch als Master bestimmt.
+	•	Alle anderen Module sind Slaves und melden ihre Werte an den Master.
+	•	Die Master- / Slave-Rolle wird auf dem Display und im Web-Interface angezeigt.
 
-Here are the new functions described in detail:
+3️⃣ Erkennung & Korrektur doppelter IDs
+	•	Falls zwei Module die gleiche ID haben, wird das Problem erkannt und automatisch behoben.
+	•	Eine neue, eindeutige ID wird zugewiesen und gespeichert.
 
-1. initializeBMSIDs()
-Purpose:
-Assigns unique IDs to all BMS modules during system initialization. It ensures that each module has a valid and distinct ID.
+4️⃣ Integration mit Victron Cerbo GX über CAN-Bus
+	•	Datenübertragung per CAN-Bus an Victron-Geräte.
+	•	Spannung, SOC, Strom & Ladezustand direkt in Victron VRM & GX-Geräten sichtbar.
 
-Functionality:
+5️⃣ Erweiterte SOC-Berechnung
+	•	Verbesserte Ladezustandsberechnung (SOC) basierend auf Zellspannungen und Kapazität.
+	•	Dynamische Anpassung der SOC-Werte basierend auf realen Messungen.
 
-Iterates through all modules (default: 10 modules).
-Checks the stored ID in the EEPROM for each module.
-If an ID is missing (set to 0) or invalid (greater than 100), a new ID is assigned.
-Newly assigned IDs are incremented sequentially starting from 1 (lastID).
-Updates the EEPROM with the new IDs and ensures the changes are committed.
-Example Behavior:
+6️⃣ WiFi & Web-Interface
+	•	WiFi-Setup über das TFT-Display möglich!
+	•	IP-Adresse wird auf dem Display angezeigt.
+	•	Komplette Web-Oberfläche zur Überwachung und Konfiguration.
 
-Module 1 has no ID stored (value = 0). Assigns ID 1.
-Module 2 has ID 55. Keeps it as-is.
-Module 3 has an invalid ID (255). Assigns ID 2.
-2. assignMaster()
-Purpose:
-Identifies and assigns the master BMS module based on the lowest module ID.
+🔧 Hardware-Anforderungen
+	•	ESP32 DevKit-C (Controller)
+	•	BMS-Module (1 pro Zelle) – Verbindet sich mit dem ESP32
+	•	TFT-Display (320x240 SPI LCD) für lokale Anzeige
+	•	CAN-Bus-Adapter für Victron-Kompatibilität
 
-Functionality:
+🚀 Installation & Einrichtung
 
-Reads all stored IDs from the EEPROM.
-Determines the module with the smallest ID.
-Logs the ID of the master module.
-Use Case:
+1️⃣ Flashen des ESP32
+	•	Code mit PlatformIO (VS Code) kompilieren und auf den ESP32 hochladen.
 
-The master module acts as the coordinator and manages communication with other BMS modules and external systems like the Victron Cerbo GX.
-3. checkDuplicateIDs()
-Purpose:
-Detects and resolves duplicate IDs among BMS modules to ensure unique identification.
+2️⃣ WiFi konfigurieren
+	•	WiFi-Daten direkt über das TFT-Display eingeben.
+	•	Alternativ per Web-Oberfläche nach dem ersten Start.
 
-Functionality:
+3️⃣ BMS-Module anschließen
+	•	Die Module verbinden sich automatisch mit dem ESP32.
+	•	Master wird automatisch gewählt.
 
-Compares the stored IDs of all modules.
-If a duplicate ID is detected:
-Assigns a new unique ID to the conflicting module using lastID.
-Updates the EEPROM with the new ID and commits the changes.
-Logs a warning whenever a duplicate ID is corrected.
-Example Behavior:
+4️⃣ Victron-Geräte verbinden (optional)
+	•	Falls du Victron-Produkte nutzt, CAN-Bus anschließen und Daten automatisch übertragen lassen.
 
-Module 1 and Module 3 both have ID 5.
-Module 3 is reassigned a new ID, e.g., 11.
-4. setupCANCommunication()
-Purpose:
-Initializes the CAN communication system for data exchange between BMS modules and the master module.
+💡 Wie benutze ich das BMS?
+	•	Live-Daten auf dem Display und im Web-Interface ansehen (Spannung, Strom, SOC, Temperatur).
+	•	Warnmeldungen & Fehler auf dem Display erkennen (Übertemperatur, Zellspannung zu hoch/niedrig).
+	•	Lade- & Entladegrenzen konfigurieren (Schutz vor Tiefentladung/Überladung).
+	•	Daten per MQTT, CAN-Bus oder Web-API abrufen.
 
-Functionality:
+🎥 Videos & Tutorials
+	•	📺 Einführung & Aufbau: YouTube
+	•	🔌 Wie programmiere ich den ESP32? Hier klicken
+	•	🛒 Wie bestelle ich PCBs von JLCPCB? Video-Anleitung
 
-Configures the CAN driver with default settings:
-GPIO pins for CAN RX and TX.
-Bit rate set to 125 Kbps.
-Accepts all incoming messages (no filters applied).
-Starts the CAN driver.
-Use Case:
+⚙️ Wie kompiliere ich den Code selbst?
+	•	Der Code nutzt PlatformIO für die Kompilierung.
+	•	Lade das Repository herunter und öffne die Workspace-Datei in PlatformIO.
+	•	Kein Code-Kompilieren nötig, wenn du nur das BMS nutzen willst.
 
-Sets up the CAN bus to facilitate communication between BMS modules and external systems like Victron Cerbo GX.
-5. processIncomingCANMessages()
-Purpose:
-Processes incoming CAN messages received by the system.
+🤝 Unterstütze das Projekt!
 
-Functionality:
+Falls dir das DIYBMS hilft, kannst du mich unterstützen:
 
-Listens for messages on the CAN bus.
-Logs the details of each received message:
-Message ID.
-Data length.
-Can be expanded to handle specific message types or respond to requests.
-Example Behavior:
+☕ Patreon: Unterstütze mich monatlich für neue Entwicklungen.
+🍻 Paypal-Spende: Hilf mir, die Entwicklungskosten zu decken.
 
-Receives a message with ID 0x100 and length 8. Logs the information.
-Summary of the New Features
-Automatic ID Assignment:
+📜 Lizenz & Rechtliches
 
-Ensures all modules have unique and valid IDs.
-Master-Slave Architecture:
+🔹 Lizenz: Creative Commons Attribution-NonCommercial-ShareAlike 2.0 UK
+🔹 Keine gewerbliche Nutzung erlaubt!
+🔹 Du kannst den Code modifizieren, aber musst ihn Open-Source halten.
 
-Assigns a master module based on the smallest ID.
-Duplicate ID Resolution:
+📄 Lizenzdetails: Hier nachlesen
 
-Detects and resolves conflicting IDs automatically.
-CAN Communication Setup:
-
-Configures the CAN bus for seamless communication between modules.
-CAN Message Processing:
-
-Handles incoming CAN messages, enabling integration with external systems like Victron devices.
-These features collectively enhance the robustness and functionality of the BMS system, ensuring reliable operation and efficient communication in a multi-module environment.
-
-# Support the project
-
-If you find the BMS useful, please consider buying me a beer, check out [Patreon](https://www.patreon.com/StuartP) for more information.
-
-You can also send beer tokens via Paypal - [https://paypal.me/stuart2222](https://paypal.me/stuart2222)
-
-Any donations go towards the on going development and prototype costs of the project.
-
-# Videos on how to use and build
-
-https://www.youtube.com/stuartpittaway
-
-### Video on how to program the devices
-https://youtu.be/wTqDMg_Ql98
-
-### Video on how to order from JLCPCB
-https://youtu.be/E1OS0ZOmOT8
-
-
-# How to use the code
-
-Instructions for programming/flashing the hardware can be [found here](ProgrammingHardware.md)
-
-# Help
-
-If you need help, ask over at the [forum](https://community.openenergymonitor.org/t/diybms-v4)
-
-If you discover a bug or want to make a feature suggestion, open a Github issue
-
-# Hardware
-
-Hardware for this code is in a seperate repository, and consists of a controller (you need 1 of these) and modules (one per series cell in your battery)
-
-https://github.com/stuartpittaway/diyBMSv4
-
-
-# WARNING
-
-This is a DIY product/solution so don’t use this for safety critical systems or in any situation where there could be a risk to life.  
-
-There is no warranty, it may not work as expected or at all.
-
-The use of this project is done so entirely at your own risk.  It may involve electrical voltages which could kill - if in doubt, seek help.
-
-The use of this project may not be compliant with local laws or regulations - if in doubt, seek help.
-
-
-# How to compile the code yourself
-
-The code uses [PlatformIO](https://platformio.org/) to build the code.  There isn't any need to compile the code if you simply want to use it, see "How to use the code" above.
-
-If you want to make changes, fix bugs or poke around, use platformio editor to open the workspace named "diybms_workspace.code-workspace"
-
-
-# License
-
-This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 2.0 UK: England & Wales License.
-
-https://creativecommons.org/licenses/by-nc-sa/2.0/uk/
-
-You are free to:
-* Share — copy and redistribute the material in any medium or format
-* Adapt — remix, transform, and build upon the material
-The licensor cannot revoke these freedoms as long as you follow the license terms.
-
-Under the following terms:
-* Attribution — You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
-* Non-Commercial — You may not use the material for commercial purposes.
-* ShareAlike — If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
-* No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.
-
-Notices:
-You do not have to comply with the license for elements of the material in the public domain or where your use is permitted by an applicable exception or limitation.
-
-No warranties are given. The license may not give you all of the permissions necessary for your intended use. For example, other rights such as publicity, privacy, or moral rights may limit how you use the material.
+❗ Letzte Warnung
+	•	KEINE GARANTIE!
+	•	Nutzung auf eigene Gefahr!
+	•	Gefährliche Spannungen möglich!
+	•	Nicht für sicherheitskritische Anwendungen!
+
+Falls du unsicher bist, hole dir professionelle Hilfe.
 
